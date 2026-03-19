@@ -1,0 +1,13 @@
+# Secrets / tokens
+config.local.yaml
+
+# Python
+venv/
+
+# Raw activities (privacy)
+spotify-data/
+data/
+
+# Excel / CSV files
+*.csv
+*.xlsx

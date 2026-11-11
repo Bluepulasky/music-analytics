@@ -147,6 +147,8 @@ TEMPLATE = r"""<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Biblioteca musical</title>
+<link rel="icon" type="image/png" href="/logo_copia.png">
+<link rel="apple-touch-icon" href="/logo_copia_apple.png">
 /*@@PLOTLY@@*/
 <style>
 :root{--bg:#15121a;--panel:#1e1a25;--panel2:#292331;--line:#352f41;--text:#ece6dc;--dim:#a39cae;--amber:#e8a33d;--teal:#4fb3a9;--rose:#d9647a}

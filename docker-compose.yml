@@ -1,0 +1,10 @@
+name: navidrome-dashboard
+
+services:
+  app:
+    build: .
+    ports:
+      - "8087:8087"
+    volumes:
+      - ./site:/app/site:ro
+    restart: unless-stopped

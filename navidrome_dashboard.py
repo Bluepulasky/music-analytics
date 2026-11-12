@@ -38,7 +38,8 @@ EMBED_PLOTLY = True
 PLOTLY_CDN = "https://cdn.plot.ly/plotly-2.35.2.min.js"
 
 BASE_DIR = Path(__file__).resolve().parent if "__file__" in globals() else Path(os.getcwd())
-OUTPUT = BASE_DIR / "index.html"
+SITE_DIR = BASE_DIR / "site"
+OUTPUT = SITE_DIR / "index.html"
 
 # Orden de columnas que viaja al HTML (el JS las lee por nombre).
 COLS = [
@@ -225,7 +226,7 @@ th{position:sticky;top:0;background:var(--panel);color:var(--dim);font-weight:60
 th[data-k]{cursor:pointer}
 th.s{color:var(--amber)}
 .n{text-align:right;font-variant-numeric:tabular-nums}
-.twrap{overflow:auto;max-height:440px}
+.twrap{overflow:auto;max-height:none}
 .tbar{display:flex;gap:12px;align-items:center;margin-bottom:8px}
 .tbar input{flex:1;min-width:0;max-width:300px}
 .tcount{color:var(--dim);font-size:12.5px}
@@ -298,7 +299,7 @@ footer li{margin:4px 0}
       <li>Vacío: campo sin valor, año o números en 0, o los marcadores [Unknown Artist] / [Unknown Album] que Navidrome pone cuando falta el dato. Un valor poco habitual no se considera error.</li>
       <li>Metadatos completos: los 9 campos de la lista (Title, Artist, Album, Year, Genre, Duration, Bitrate, Size, Suffix) tienen valor.</li>
       <li>Géneros: se muestran tal cual están en los metadatos. La vista normalizada agrupa por minúsculas, espacios y guiones, solo para estudiar variantes; no modifica nada.</li>
-      <li>Lossless: flac, wav, aiff, ape, wv, alac, dsf. Con pérdida: mp3, ogg, opus, aac, wma. Ambiguo: m4a/mp4, porque el contenedor puede llevar AAC o ALAC y el inventario no lo indica.</li>
+      <li>Lossless: flac, wav, aiff, ape, wv, alac, dsf. Con pérdida: mp3, ogg, opus, aac, wma, m4a/mp4</li>
       <li>Períodos: hasta 1969, 1970–1989, 1990–2009 y 2010 en adelante. Son cortes por año definidos acá, no estilos.</li>
       <li>Tamaños en GB decimales (1 GB = 1.000.000.000 bytes). Posible duplicado: mismo título, artista y álbum ignorando mayúsculas y acentos.</li>
       <li>Reproducciones, favoritas y valoraciones son las del usuario con el que se consultó la API. La fecha de alta es cuando Navidrome indexó el archivo.</li>
@@ -338,9 +339,8 @@ const clean = v => { const s = v==null ? '' : String(v).trim(); return PLACE.has
 const asDate = v => { if(!v) return null; const d=new Date(v); return isNaN(d) || d.getFullYear()<1971 ? null : d; };
 const normGenre = g => g.toLowerCase().replace(/[\s_\-\/]+/g,' ').trim();
 const LOSSLESS = new Set(['flac','wav','aiff','aif','ape','wv','alac','dsf','dff','tta']);
-const LOSSY = new Set(['mp3','ogg','oga','opus','aac','wma','mpc']);
-const AMBIG = new Set(['m4a','mp4','m4b']);
-const clsOf = f => LOSSLESS.has(f) ? 'Lossless' : LOSSY.has(f) ? 'Con pérdida' : AMBIG.has(f) ? 'Ambiguo' : 'Otro';
+const LOSSY = new Set(['mp3','ogg','oga','opus','aac','wma','mpc','m4a','mp4','m4b']);
+const clsOf = f => LOSSLESS.has(f) ? 'Lossless' : LOSSY.has(f) ? 'Con pérdida' : 'Otro';
 const FIELDS = [['title','Title'],['artist','Artist'],['album','Album'],['year','Year'],['genre','Genre'],['duration','Duration'],['bitRate','Bitrate'],['size','Size'],['suffix','Suffix']];
 const FN = Object.fromEntries(FIELDS);
 
@@ -386,8 +386,8 @@ for(const o of R){ if(!o.genre) continue; let m=GN.get(o.genN); if(!m){ m=new Ma
 const GNAME = new Map(); for(const [k,m] of GN) GNAME.set(k, topN(m,1)[0][0]);
 
 const PAL = ['#e8a33d','#4fb3a9','#9a86e0','#d9647a','#5fa8e8','#9fc062','#d98a5f','#c07fb5','#7fc4d6','#bfae6a'];
-const CLSCOL = {'Lossless':'#4fb3a9','Con pérdida':'#d9647a','Ambiguo':'#e8a33d','Otro':'#8a8494'};
-const CLASSES = ['Lossless','Con pérdida','Ambiguo','Otro'];
+const CLSCOL = {'Lossless':'#4fb3a9','Con pérdida':'#d9647a','Otro':'#8a8494'};
+const CLASSES = ['Lossless','Con pérdida','Otro'];
 const FMTS = topN(countBy(R,o=>o.fmt),999);
 const FC = new Map(FMTS.map((e,i)=>[e[0],PAL[i%PAL.length]]));
 const PERIODS = [{n:'Hasta 1969',lo:null,hi:1969},{n:'1970–1989',lo:1970,hi:1989},{n:'1990–2009',lo:1990,hi:2009},{n:'2010 en adelante',lo:2010,hi:null}];
@@ -524,7 +524,7 @@ const SECTIONS = [
    ['chart','cHeat','Géneros por década',3,400],['table','tVar','Variantes de escritura de un mismo género',3]]},
  {id:'plays',t:'Reproducciones y actividad',d:'Lo que realmente se escucha, y cómo creció la biblioteca. <span id="playsNote"></span>',cards:[
    ['chart','cTopSongs','20 canciones más reproducidas',1,300],['chart','cTopArtists','15 artistas más reproducidos',1,300],['chart','cPlayGenre','Reproducciones por género',1,300],
-   ['chart','cPlayDist','Canciones según veces reproducidas',1,280],['chart','cNeverAlb','Álbumes con más canciones sin reproducir',1,300],['chart','cRating','Valoraciones',1,280],
+   ['chart','cPlayDist','Canciones según veces reproducidas',1,280],['chart','cNeverAlb','Álbumes con más canciones sin reproducir',1,300],['chart','cRating','Favoritas por artista',1,300],
    ['chart','cLast','Última reproducción por mes',3,280],['chart','cGrow','Crecimiento de la biblioteca',3,300]]},
  {id:'formatos',t:'Formatos y calidad de audio',d:'Un bitrate alto no implica mejor calidad; por eso se separan los formatos lossless de los que pierden información.',cards:[
    ['chart','cFmtPie','Formatos',1,300],['chart','cFmtCount','Canciones por formato',1,300],['chart','cFmtSize','Espacio por formato',1,300],
@@ -758,9 +758,9 @@ function renderPlays(){
   setSub('cNeverAlb',frac(F.filter(o=>o.plays===0).length,F.length)+' sin reproducir');
   hbar('cNeverAlb',topN(nm,15).map(([k,v])=>[AL.get(k).label,v]),{color:PAL[3],click:l=>addTo('albums',l)});
 
-  const rt=[1,2,3,4,5].map(r=>F.filter(o=>o.rating===r).length), st=F.filter(o=>o.starred).length;
-  setSub('cRating','favoritas: '+frac(st,F.length)+' · valoradas: '+frac(sum(rt,x=>x),F.length));
-  if(rt.every(v=>!v)) vbar('cRating',[],[],{}); else vbar('cRating',['1','2','3','4','5'],rt,{colors:PAL[0],yt:'canciones',ht:'%{x} estrellas: %{y}'});
+  const fav=F.filter(o=>o.starred && o.artist);
+  setSub('cRating',frac(F.filter(o=>o.starred).length,F.length)+' favoritas · '+fi(new Set(fav.map(o=>o.artist)).size)+' artistas');
+  hbar('cRating',topN(countBy(fav,o=>o.artist),20),{color:PAL[3],click:a=>addTo('artists',a)});
 
   const lp=F.filter(o=>o.played), lm=countBy(lp,o=>mkey(o.played)), lk=[...lm.keys()].sort();
   setSub('cLast',frac(lp.length,F.length)+' con fecha de última reproducción; cada canción cuenta solo en el mes de su última escucha');
@@ -792,7 +792,7 @@ function renderFormats(){
   show('cBrHist',CLASSES.map(c=>({type:'histogram',name:c,x:wb.filter(o=>o.cls===c).map(o=>o.br),xbins:{size:16},marker:{color:CLSCOL[c]},hovertemplate:'%{x} kbps: %{y}<extra>'+c+'</extra>'})).filter(t=>t.x.length),
     {barmode:'stack',showlegend:true,xaxis:{title:{text:'kbps'}},yaxis:{title:{text:'canciones'}},margin:{l:48,r:8,t:6,b:50}});
 
-  const BR=[['< 128',0,127],['128 a 159',128,159],['160 a 191',160,191],['192 a 223',192,223],['224 a 255',224,255],['256 a 319',256,319],['320',320,320],['321 a 639',321,639],['640 o más',640,1e9]];
+  const BR=[['hasta 160',0,160],['hasta 256',160,256],['hasta 320',257,320],['hasta 640',321,639],['hasta 1200',640,1200],['1200 o más',1201,1e9]];
   setSub('cBrRange',frac(wb.length,F.length)+' con bitrate');
   show('cBrRange',CLASSES.map(c=>({type:'bar',name:c,x:BR.map(b=>b[0]),y:BR.map(b=>wb.filter(o=>o.cls===c&&o.br>=b[1]&&o.br<=b[2]).length),marker:{color:CLSCOL[c]},hovertemplate:'%{x} kbps: %{y}<extra>'+c+'</extra>'})).filter(t=>t.y.some(v=>v)),
     {barmode:'stack',showlegend:true,xaxis:{type:'category'},yaxis:{title:{text:'canciones'}},margin:{l:48,r:8,t:6,b:50}});
@@ -819,12 +819,10 @@ function renderFormats(){
     return {c,fm:[...new Set(a.map(o=>o.fmt))].sort().join(', '),n:a.length,by:by2,du,br:median(a.filter(o=>o.br>0).map(o=>o.br)),avg:by2/a.length};
   }).filter(Boolean);
   setSub('cCmp','porcentajes sobre '+fi(F.length)+' canciones');
-  const m4=F.filter(o=>o.cls==='Ambiguo'), hi=m4.filter(o=>o.br>=600).length;
   $('cCmp').innerHTML = rows.length
     ? '<div class="twrap"><table><thead><tr><th>Tipo</th><th>Formatos</th><th class="n">Canciones</th><th class="n">% del total</th><th class="n">Espacio</th><th class="n">Tamaño medio</th><th class="n">Bitrate mediano</th><th class="n">MB por minuto</th></tr></thead><tbody>'
       + rows.map(r=>'<tr><td><span class="mk" style="background:transparent;color:'+CLSCOL[r.c]+';padding:0">●</span> '+r.c+'</td><td>'+esc(r.fm)+'</td><td class="n">'+fi(r.n)+'</td><td class="n">'+pcs(r.n,F.length)+'</td><td class="n">'+f1(r.by/1e9)+' GB</td><td class="n">'+f1(r.avg/1e6)+' MB</td><td class="n">'+fi(r.br)+' kbps</td><td class="n">'+(r.du>0?f1(r.by/1e6/(r.du/60)):'–')+'</td></tr>').join('')
-      + '</tbody></table></div><p class="note">Ambiguo reúne m4a/mp4: el contenedor puede llevar AAC (con pérdida) o ALAC (lossless) y el inventario no lo indica.'
-      + (m4.length?' '+fi(hi)+' de '+fi(m4.length)+' superan los 600 kbps, lo que sugiere ALAC, pero es solo una pista.':'')+'</p>'
+      + '</tbody></table></div>'
     : '<div class="empty">Sin datos con los filtros actuales</div>';
 }
 
@@ -920,7 +918,7 @@ function renderCollection(){
     {k:'yr',h:'Year',num:true,v:o=>o.yr||0,f:o=>o.yr||'–'},{k:'genre',h:'Genre'},{k:'fmt',h:'Formato'},
     {k:'br',h:'Bitrate',num:true,f:o=>o.br?o.br+' kbps':'–'},{k:'dur',h:'Duración',num:true,f:o=>mmss(o.dur)},
     {k:'sz',h:'Tamaño',num:true,f:o=>f1(o.sz/1e6)+' MB'},{k:'plays',h:'Reprod.',num:true}
-  ],F,{sort:['artist',1],size:15});
+  ],F,{sort:['artist',1],size:40});
 }
 
 /* ---------- ciclo ---------- */

@@ -7,4 +7,7 @@ services:
       - "8087:8087"
     volumes:
       - ./site:/app/site:ro
+      - ./data:/app/data
+      - ./config.local.yaml:/app/config.local.yaml:ro
+      - /mnt/tank-hdd/media/Music:/mnt/tank-hdd/media/Music:rw
     restart: unless-stopped

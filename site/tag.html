@@ -1,0 +1,985 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Music Genre Editor</title>
+
+<style>
+:root {
+    --bg: #111318;
+    --panel: #1b1e25;
+    --panel2: #232731;
+    --border: #303540;
+    --text: #e8eaf0;
+    --muted: #9299a8;
+    --accent: #8b9cff;
+    --green: #55c68b;
+    --yellow: #e6b85c;
+    --red: #e16b73;
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: Arial, sans-serif;
+}
+
+header {
+    padding: 20px 26px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+header h1 {
+    margin: 0;
+    font-size: 21px;
+}
+
+header a {
+    color: var(--muted);
+    text-decoration: none;
+}
+
+.layout {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    grid-template-rows: minmax(0, 1fr);
+    height: 100vh;
+    height: 100dvh;
+}
+
+.sidebar {
+    background: var(--panel);
+    border-right: 1px solid var(--border);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.main {
+    padding: 28px;
+    min-width: 0;
+}
+
+input, button {
+    font: inherit;
+}
+
+input {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    color: var(--text);
+    padding: 11px;
+    width: 100%;
+    outline: none;
+}
+
+input:focus {
+    border-color: var(--accent);
+}
+
+button {
+    border: 0;
+    border-radius: 7px;
+    padding: 10px 15px;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+button:disabled {
+    opacity: .4;
+    cursor: not-allowed;
+}
+
+.primary {
+    background: var(--accent);
+    color: #111318;
+}
+
+.secondary {
+    background: var(--panel2);
+    color: var(--text);
+    border: 1px solid var(--border);
+}
+
+.success {
+    background: #245b43;
+    color: #b8f2d1;
+}
+
+.danger {
+    background: #542d32;
+    color: #ffb9bd;
+}
+
+.progress {
+    height: 7px;
+    background: var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    margin: 12px 0;
+}
+
+.progress-bar {
+    height: 100%;
+    background: var(--green);
+    width: 0%;
+    transition: width .2s;
+}
+
+.album-list {
+    margin-top: 20px;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+}
+
+.album-item {
+    padding: 12px;
+    border-radius: 7px;
+    margin-bottom: 5px;
+    cursor: pointer;
+    border: 1px solid transparent;
+}
+
+.album-item:hover {
+    background: var(--panel2);
+}
+
+.album-item.active {
+    background: var(--panel2);
+    border-color: var(--accent);
+}
+
+.album-item small {
+    display: block;
+    color: var(--muted);
+    margin-top: 4px;
+}
+
+.album-item .status {
+    float: right;
+    color: var(--green);
+}
+
+.muted {
+    color: var(--muted);
+}
+
+.album-header {
+    margin-bottom: 26px;
+}
+
+.album-header h2 {
+    margin: 0 0 7px;
+    font-size: 27px;
+}
+
+.album-header p {
+    color: var(--muted);
+    margin: 0;
+}
+
+.panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.panel h3 {
+    margin: 0 0 15px;
+    font-size: 15px;
+}
+
+details.panel > summary {
+    cursor: pointer;
+    font-size: 15px;
+    font-weight: bold;
+    list-style: none;
+}
+
+details.panel > summary::-webkit-details-marker {
+    display: none;
+}
+
+details.panel > summary::before {
+    content: "▸ ";
+    color: var(--muted);
+}
+
+details.panel[open] > summary::before {
+    content: "▾ ";
+}
+
+details.panel[open] > summary {
+    margin-bottom: 15px;
+}
+
+.album-genre {
+    display: flex;
+    gap: 10px;
+}
+
+.album-genre input {
+    flex: 1;
+}
+
+.track-header, .track-row {
+    display: grid;
+    grid-template-columns: 45px minmax(130px, 1fr) minmax(220px, 1.2fr);
+    gap: 12px;
+    align-items: center;
+}
+
+.track-header {
+    color: var(--muted);
+    font-size: 12px;
+    padding: 0 10px 12px;
+}
+
+.track-row {
+    padding: 8px 10px;
+    border-top: 1px solid var(--border);
+}
+
+.track-number {
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.track-title {
+    font-size: 14px;
+    overflow-wrap: anywhere;
+}
+
+.track-row input {
+    font-size: 13px;
+    padding: 9px;
+}
+
+.actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 9px;
+    margin-top: 18px;
+}
+
+.actions .spacer {
+    flex: 1;
+}
+
+#message {
+    margin-top: 15px;
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.empty {
+    color: var(--muted);
+    text-align: center;
+    padding: 100px 20px;
+}
+
+.sugg-block { margin-bottom: 18px; }
+
+.sugg-block h4 {
+    margin: 0 0 8px;
+    font-size: 13px;
+}
+
+.sugg-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.sugg-table th, .sugg-table td {
+    padding: 6px 8px;
+    text-align: left;
+    border-top: 1px solid var(--border);
+}
+
+.sugg-table th {
+    color: var(--muted);
+    font-size: 12px;
+    border-top: 0;
+}
+
+.sugg-table .num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.sugg-discarded {
+    color: var(--muted);
+    font-size: 12px;
+    margin-top: 8px;
+    overflow-wrap: anywhere;
+}
+
+@media(max-width: 850px) {
+    .layout {
+        grid-template-columns: 1fr;
+    }
+
+    .sidebar {
+        border-right: 0;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .album-list {
+        max-height: 250px;
+    }
+
+    .main {
+        padding: 18px;
+        overflow-y: auto;
+    }
+}
+
+@media(max-width: 600px) {
+    .track-header, .track-row {
+        grid-template-columns: 32px 1fr;
+    }
+
+    .track-header span:last-child {
+        display: none;
+    }
+
+    .track-row input {
+        grid-column: 2;
+    }
+
+    .album-genre {
+        flex-direction: column;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div class="layout">
+
+    <aside class="sidebar">
+
+        <h3>Library</h3>
+
+        <div id="progressText" class="muted">
+            Loading library...
+        </div>
+
+        <div class="progress">
+            <div class="progress-bar" id="progressBar"></div>
+        </div>
+
+        <input
+            id="search"
+            placeholder="Search artist or album..."
+            oninput="renderList()"
+        >
+
+        <div class="album-list" id="albumList"></div>
+
+        <button class="secondary"
+                style="width:100%;margin-top:15px"
+                onclick="scanLibrary()">
+            Refresh library
+        </button>
+
+    </aside>
+
+
+    <main class="main" id="main">
+
+        <div class="empty">
+            <h2>Music Genre Editor</h2>
+            <p>Select an album to start reviewing.</p>
+        </div>
+
+    </main>
+
+</div>
+
+
+<script>
+
+let albums = [];
+let currentAlbum = null;
+let currentIndex = -1;
+let currentTracks = [];
+
+const $ = id => document.getElementById(id);
+
+
+async function api(url, options = {}) {
+
+    const response = await fetch(url, {
+        ...options,
+        headers: {
+            "Content-Type": "application/json",
+            ...(options.headers || {})
+        }
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+        throw new Error(result.error || "Request failed");
+    }
+
+    return result;
+}
+
+
+function escapeHtml(value) {
+    return String(value).replace(/[&<>"']/g, char => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#039;"
+    })[char]);
+}
+
+
+async function loadAlbums() {
+
+    try {
+
+        const data = await api("/api/tag/albums");
+
+        albums = data.albums;
+
+        $("progressText").textContent =
+            `${data.reviewed} / ${data.total} albums reviewed`;
+
+        const percentage = data.total
+            ? data.reviewed / data.total * 100
+            : 0;
+
+        $("progressBar").style.width = percentage + "%";
+
+        renderList();
+
+        if (currentAlbum) {
+            const index = albums.findIndex(
+                a => a.key === currentAlbum.key
+            );
+
+            if (index >= 0) {
+                currentIndex = index;
+            }
+        }
+
+    } catch (error) {
+        alert(error.message);
+    }
+}
+
+
+function renderList() {
+
+    const query = $("search").value.toLowerCase();
+
+    const filtered = albums
+        .map((album, index) => ({...album, index}))
+        .filter(a =>
+            `${a.artist} ${a.album}`.toLowerCase().includes(query)
+        );
+
+    $("albumList").innerHTML = filtered.map(a => `
+
+        <div class="album-item ${
+            currentAlbum?.key === a.key ? "active" : ""
+        }" onclick="selectAlbum(${a.index})">
+
+            ${a.reviewed
+                ? '<span class="status">✓</span>'
+                : ''
+            }
+
+            <strong>${escapeHtml(a.album)}</strong>
+
+            <small>
+                ${escapeHtml(a.artist)}
+                · ${a.tracks} tracks
+            </small>
+
+        </div>
+
+    `).join("");
+}
+
+async function scanLibrary() {
+
+    const button = document.querySelector(
+        'button[onclick="scanLibrary()"]'
+    );
+
+    if (button) {
+        button.disabled = true;
+        button.textContent = "Scanning...";
+    }
+
+    try {
+
+        const result = await api("/api/tag/scan", {
+            method: "POST",
+            body: JSON.stringify({})
+        });
+
+        await loadAlbums();
+
+        const stats = result.result;
+
+        alert(
+            `Library updated!\n\n` +
+            `Files checked: ${stats.scanned}\n` +
+            `Metadata read: ${stats.updated}\n` +
+            `Unchanged: ${stats.skipped}\n` +
+            `Errors: ${stats.errors}\n` +
+            `Time: ${stats.seconds}s`
+        );
+
+    } catch (error) {
+
+        alert(error.message);
+
+    } finally {
+
+        if (button) {
+            button.disabled = false;
+            button.textContent = "Refresh library";
+        }
+
+    }
+}
+
+async function selectAlbum(index) {
+
+    currentIndex = index;
+
+    const selected = albums[index];
+
+    try {
+
+        const data = await api(
+            `/api/tag/album/${selected.key}`
+        );
+
+        currentAlbum = data;
+        currentTracks = data.tracks;
+
+        renderAlbum();
+        renderList();
+
+    } catch (error) {
+        alert(error.message);
+    }
+}
+
+
+function renderAlbum() {
+
+    const album = currentAlbum;
+
+    if (!album) return;
+    clearTimeout(applyTimer);
+    applyTimer = null;
+
+    const allGenres = [
+        ...new Set(
+            currentTracks.flatMap(t => t.genres)
+        )
+    ];
+
+    $("main").innerHTML = `
+
+        <div class="album-header">
+
+            <h2>${escapeHtml(album.album)}</h2>
+
+            <p>
+                ${escapeHtml(album.artist)}
+                · ${currentTracks.length} tracks
+                · ${album.reviewed ? "Reviewed" : "Pending review"}
+            </p>
+
+        </div>
+
+
+        <div class="panel">
+
+            <h3>Album genre</h3>
+
+            <div class="album-genre">
+
+                <input
+                    id="albumGenres"
+                    value="${escapeHtml(allGenres.join("; "))}"
+                    placeholder="indie rock; alternative rock"
+                    oninput="applyToAllLater()"
+                >
+
+            </div>
+
+            <p class="muted" style="font-size:12px">
+                Separate multiple genres with semicolons.
+                What you type here is copied to all tracks automatically.
+                Files are only modified when you press Save changes.
+            </p>
+
+        </div>
+
+        <div class="panel" id="suggestions">
+            <h3>Sugerencias de Last.fm</h3>
+            <div class="muted" style="font-size:13px">
+                Consultando Last.fm...
+            </div>
+        </div>
+
+        <details class="panel">
+
+            <summary>Individual tracks</summary>
+
+            <div class="track-header">
+                <span>#</span>
+                <span>Track</span>
+                <span>Genres</span>
+            </div>
+
+            <div id="trackList">
+
+                ${currentTracks.map((track, index) => `
+
+                    <div class="track-row">
+
+                        <span class="track-number">
+                            ${escapeHtml(track.tracknumber || index + 1)}
+                        </span>
+
+                        <span class="track-title">
+                            ${escapeHtml(track.title)}
+                        </span>
+
+                        <input
+                            class="trackGenres"
+                            data-path="${escapeHtml(track.path)}"
+                            value="${escapeHtml(track.genres.join("; "))}"
+                            placeholder="No genre"
+                        >
+
+                    </div>
+
+                `).join("")}
+
+            </div>
+
+        </details>
+
+        <div class="actions">
+
+            <button class="secondary"
+                    onclick="previousAlbum()">
+                ← Previous
+            </button>
+
+            <button class="secondary"
+                    onclick="undoChanges()">
+                Undo last edit
+            </button>
+
+            <div class="spacer"></div>
+
+            <button class="secondary"
+                    onclick="markReviewed()">
+                Mark reviewed
+            </button>
+
+            <button class="primary"
+                    onclick="saveChanges()">
+                Save changes
+            </button>
+
+            <button class="secondary"
+                    onclick="nextAlbum()">
+                Next →
+            </button>
+
+        </div>
+
+        <div id="message"></div>
+
+    `;
+    loadSuggestions(album.key);
+}
+
+function suggestionBlock(title, block) {
+
+    const rows = block.autorizados.map(s => `
+        <tr>
+            <td>${escapeHtml(s.estilo)}</td>
+            <td class="num">${s.peso_original}</td>
+            <td class="num">${s.porcentaje.toFixed(1)}%</td>
+        </tr>
+    `).join("");
+
+    const discarded = block.descartados.length
+        ? block.descartados.map(d => `${escapeHtml(d.tag)} (${d.peso})`).join(", ")
+        : "-";
+
+    return `
+        <div class="sugg-block">
+
+            <h4>
+                ${escapeHtml(title)}:
+                ${block.autorizados.length} estilos autorizados
+                de ${block.total_tags} tags
+            </h4>
+
+            ${block.autorizados.length ? `
+                <table class="sugg-table">
+                    <thead>
+                        <tr>
+                            <th>Estilo</th>
+                            <th class="num">Peso original</th>
+                            <th class="num">% entre autorizados</th>
+                        </tr>
+                    </thead>
+                    <tbody>${rows}</tbody>
+                </table>
+            ` : `
+                <div class="muted" style="font-size:13px">
+                    (ninguno autorizado)
+                </div>
+            `}
+
+            <div class="sugg-discarded">
+                Descartados: ${discarded}
+            </div>
+
+        </div>
+    `;
+}
+
+
+async function loadSuggestions(key, refresh = false) {
+
+    if (!$("suggestions")) return;
+
+    try {
+
+        const data = await api(
+            `/api/tag/suggestions/${key}${refresh ? "?refresh=1" : ""}`
+        );
+
+        // si el usuario ya cambió de álbum, descartamos la respuesta
+        if (currentAlbum?.key !== key || !$("suggestions")) return;
+
+        $("suggestions").innerHTML = `
+
+            <h3>Sugerencias de Last.fm</h3>
+
+            ${suggestionBlock(
+                `Álbum: ${data.artist} - ${data.album}`,
+                data.album_tags
+            )}
+
+            ${suggestionBlock(
+                `Artista: ${data.artist}`,
+                data.artist_tags
+            )}
+
+            <button class="secondary"
+                    onclick="loadSuggestions('${key}', true)">
+                Actualizar desde Last.fm
+            </button>
+
+        `;
+
+    } catch (error) {
+
+        if (currentAlbum?.key !== key || !$("suggestions")) return;
+
+        $("suggestions").innerHTML = `
+            <h3>Sugerencias de Last.fm</h3>
+            <div class="muted" style="font-size:13px">
+                No se pudieron cargar: ${escapeHtml(error.message)}
+            </div>
+        `;
+    }
+}
+
+function applyToAll() {
+
+    const value = $("albumGenres").value;
+
+    document.querySelectorAll(".trackGenres")
+        .forEach(input => {
+            input.value = value;
+        });
+
+}
+
+let applyTimer = null;
+
+function applyToAllLater() {
+    clearTimeout(applyTimer);
+    applyTimer = setTimeout(() => {
+        applyTimer = null;
+        applyToAll();
+    }, 100);
+}
+
+function flushApply() {
+    if (applyTimer) {
+        clearTimeout(applyTimer);
+        applyTimer = null;
+        applyToAll();
+    }
+}
+
+async function saveChanges() {
+
+    if (!currentAlbum) return;
+    flushApply();
+
+    const inputs = document.querySelectorAll(".trackGenres");
+
+    const tracks = [...inputs].map(input => ({
+        path: input.dataset.path,
+        genres: input.value
+    }));
+
+    if (!confirm(
+        `Save genre changes for ${tracks.length} tracks?`
+    )) return;
+
+    try {
+
+        const result = await api("/api/tag/save", {
+            method: "POST",
+            body: JSON.stringify({
+                album_key: currentAlbum.key,
+                tracks
+            })
+        });
+
+        $("message").textContent =
+            `Saved successfully. ${result.modified} tracks modified.`;
+
+        await loadAlbums();
+        await selectAlbum(currentIndex);
+
+    } catch (error) {
+        alert(error.message);
+    }
+
+}
+
+
+async function markReviewed() {
+
+    if (!currentAlbum) return;
+
+    try {
+
+        await api("/api/tag/review", {
+            method: "POST",
+            body: JSON.stringify({
+                album_key: currentAlbum.key
+            })
+        });
+
+        await loadAlbums();
+        await selectAlbum(currentIndex);
+
+    } catch (error) {
+        alert(error.message);
+    }
+
+}
+
+
+async function undoChanges() {
+
+    if (!currentAlbum) return;
+
+    if (!confirm(
+        "Restore the previous genre values for this album?"
+    )) return;
+
+    try {
+
+        await api("/api/tag/undo", {
+            method: "POST",
+            body: JSON.stringify({
+                album_key: currentAlbum.key
+            })
+        });
+
+        await loadAlbums();
+        await selectAlbum(currentIndex);
+
+        alert("Previous genres restored.");
+
+    } catch (error) {
+        alert(error.message);
+    }
+
+}
+
+
+function nextAlbum() {
+
+    if (currentIndex < albums.length - 1) {
+        selectAlbum(currentIndex + 1);
+    }
+
+}
+
+
+function previousAlbum() {
+
+    if (currentIndex > 0) {
+        selectAlbum(currentIndex - 1);
+    }
+
+}
+
+async function initialize() {
+
+    try {
+
+        const status = await api("/api/tag/status");
+
+        if (status.indexed_tracks === 0) {
+            await scanLibrary();
+        } else {
+            await loadAlbums();
+        }
+
+    } catch (error) {
+        alert(error.message);
+    }
+
+}
+
+initialize();
+
+</script>
+
+</body>
+</html>

@@ -46,7 +46,7 @@ COLS = [
     "title", "artist", "album", "albumArtist", "albumId", "year", "genre",
     "duration", "bitRate", "size", "suffix",
     "playCount", "played", "starred", "userRating", "created",
-    "bitDepth", "samplingRate",
+    "bitDepth", "samplingRate", "genres"
 ]
 
 
@@ -106,8 +106,33 @@ def to_row(s):
         s.get("playCount", 0), s.get("played", ""), s.get("starred", ""),
         s.get("userRating", 0), s.get("created", ""),
         s.get("bitDepth", 0), s.get("samplingRate", 0),
+        [x.get("name", "") if isinstance(x, dict) else str(x) for x in s.get("genres", [])],
     ]
 
+def load_generos():
+    path = BASE_DIR / "generos.yaml"
+    if not path.exists():
+        sys.exit(f"No encuentro {path}")
+    with open(path, "r", encoding="utf-8") as f:
+        g = yaml.safe_load(f) or {}
+    tier1 = [str(x) for x in (g.get("tier1") or [])]
+    tier2 = {}   # subgénero -> [tier 1 padres]
+    for parent, children in (g.get("tier2") or {}).items():
+        parent = str(parent)
+        if parent not in tier1:
+            sys.exit(f"generos.yaml: tier2 con un padre que no está en tier1: {parent}")
+        for child in children or []:
+            child = str(child)
+            if child in tier1:   # un tier 1 no puede ser a la vez tier 2
+                continue
+            if parent not in tier2.setdefault(child, []):
+                tier2[child].append(parent)
+    alias = {str(k): str(v) for k, v in (g.get("alias") or {}).items()}
+    known = set(tier1) | set(tier2)
+    bad = [f"{k} -> {v}" for k, v in alias.items() if v not in known]
+    if bad:
+        sys.exit("generos.yaml: alias que apuntan a algo que no existe: " + "; ".join(bad))
+    return {"tier1": tier1, "tier2": tier2, "alias": alias}
 
 def plotly_tag():
     if EMBED_PLOTLY:
@@ -124,6 +149,7 @@ def build_html(songs):
         "generated": datetime.now().isoformat(timespec="minutes"),
         "cols": COLS,
         "rows": [to_row(s) for s in songs],
+        "taxonomy": load_generos(),
     }
     blob = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
     blob = blob.replace("</", "<\\/").replace("<!--", "<\\!--")
@@ -270,7 +296,7 @@ footer li{margin:4px 0}
     <div class="f pick"><label for="inAlbums">Álbum</label><input id="inAlbums" list="dlAlbums" placeholder="Buscar y elegir" autocomplete="off"><datalist id="dlAlbums"></datalist><div class="chips" id="chAlbums"></div></div>
     <div class="f pick"><label for="inGenres">Género</label><input id="inGenres" list="dlGenres" placeholder="Buscar y elegir" autocomplete="off"><datalist id="dlGenres"></datalist><div class="chips" id="chGenres"></div></div>
     <div class="f"><span>Formato</span><div class="chips" id="fmts"></div></div>
-    <label class="f">Metadatos<select id="sComp"><option value="all">Todos</option><option value="complete">Completos</option><option value="incomplete">Incompletos</option><option value="nogenre">Sin género</option><option value="noyear">Sin año</option></select></label>
+    <label class="f">Metadatos<select id="sComp"><option value="all">Todos</option><option value="complete">Completos</option><option value="incomplete">Incompletos</option><option value="nogenre">Sin género</option><option value="noyear">Sin año</option><option value="notier1">Sin género tier 1</option></select></label>
     <label class="f">Reproducciones<select id="sPlay"><option value="all">Todas</option><option value="played">Con reproducciones</option><option value="never">Sin reproducir</option></select></label>
     <label class="f check"><input type="checkbox" id="cNorm">Géneros normalizados</label>
     <button class="btn" id="clear" type="button">Limpiar filtros</button>
@@ -298,7 +324,7 @@ footer li{margin:4px 0}
       <li>Álbum único: el id de álbum de Navidrome; si no viniera, la combinación artista + álbum. Así dos «Greatest Hits» de artistas distintos no se mezclan.</li>
       <li>Vacío: campo sin valor, año o números en 0, o los marcadores [Unknown Artist] / [Unknown Album] que Navidrome pone cuando falta el dato. Un valor poco habitual no se considera error.</li>
       <li>Metadatos completos: los 9 campos de la lista (Title, Artist, Album, Year, Genre, Duration, Bitrate, Size, Suffix) tienen valor.</li>
-      <li>Géneros: se muestran tal cual están en los metadatos. La vista normalizada agrupa por minúsculas, espacios y guiones, solo para estudiar variantes; no modifica nada.</li>
+      <li>Géneros: cada etiqueta se interpreta con generos.yaml. Tier 1 son géneros amplios y tier 2 subgéneros (elegir un tier 2 implica su tier 1). Lo que no está en el archivo queda como sin clasificar. La torta cuenta cada canción una vez, en su género principal: el primero de tier 1 según el orden de prioridad del archivo.</li>
       <li>Lossless: flac, wav, aiff, ape, wv, alac, dsf. Con pérdida: mp3, ogg, opus, aac, wma, m4a/mp4</li>
       <li>Períodos: hasta 1969, 1970–1989, 1990–2009 y 2010 en adelante. Son cortes por año definidos acá, no estilos.</li>
       <li>Tamaños en GB decimales (1 GB = 1.000.000.000 bytes). Posible duplicado: mismo título, artista y álbum ignorando mayúsculas y acentos.</li>
@@ -345,9 +371,39 @@ const FIELDS = [['title','Title'],['artist','Artist'],['album','Album'],['year',
 const FN = Object.fromEntries(FIELDS);
 
 const CI = {}; RAW.cols.forEach((c,i)=>CI[c]=i);
+/* ---------- taxonomía (generos.yaml) ---------- */
+const TX = RAW.taxonomy;
+const TIER1 = TX.tier1;   // el orden es la prioridad
+const tnorm = s => s.toLowerCase().replace(/[\s\-_/]+/g,' ').trim();
+const T1MAP = new Map(TIER1.map(g=>[tnorm(g),g]));
+const T2 = new Map(Object.entries(TX.tier2).map(([s,p])=>[tnorm(s),{name:s,parents:p}]));
+const ALI = new Map(Object.entries(TX.alias||{}).map(([a,c])=>[tnorm(a),tnorm(c)]));
+const UNK = new Map();
+function resolve(tag){
+  let k=tnorm(tag);
+  if(ALI.has(k)) k=ALI.get(k);
+  if(T1MAP.has(k)) return {name:T1MAP.get(k),tier:1};
+  if(T2.has(k)) return {name:T2.get(k).name,tier:2,parents:T2.get(k).parents};
+  if(!UNK.has(k)) UNK.set(k,tag.trim());
+  return {name:UNK.get(k),tier:0};
+}
+
 const R = RAW.rows.map((r,i)=>{
   const g = k => r[CI[k]];
-  const title=clean(g('title')), artist=clean(g('artist')), album=clean(g('album')), genre=clean(g('genre'));
+  const title=clean(g('title')), artist=clean(g('artist')), album=clean(g('album'));
+  const gl=g('genres');
+  const tags=(Array.isArray(gl)&&gl.length ? gl : String(g('genre')||'').split(/\s*[;•]\s*/)).map(clean).filter(Boolean);
+  const genre=tags.join('; ');
+  const cg=[], t1=new Set(), maybe=new Set();
+  for(const t of tags){
+    const r=resolve(t);
+    if(cg.includes(r.name)) continue;
+    cg.push(r.name);
+    if(r.tier===1) t1.add(r.name);
+    else if(r.tier===2){ if(r.parents.length===1) t1.add(r.parents[0]); else r.parents.forEach(p=>maybe.add(p)); }
+  }
+  if(!t1.size) maybe.forEach(p=>t1.add(p));   // sin tier 1 claro: se usan los padres posibles
+  const prim=TIER1.find(x=>t1.has(x))||'';
   const fmt=clean(g('suffix')).toLowerCase();
   const year=+g('year')||0, dur=+g('duration')||0, br=+g('bitRate')||0, sz=+g('size')||0;
   const miss=[];
@@ -358,7 +414,7 @@ const R = RAW.rows.map((r,i)=>{
     i, title, artist, album, albumArtist: clean(g('albumArtist')),
     akey: album ? (g('albumId') || artist+'\u0001'+album) : null,
     yr: year>0 ? year : null, dec: year>0 ? Math.floor(year/10)*10 : null,
-    genre, genN: genre ? normGenre(genre) : '',
+    genre, tags, cg, t1, prim, gset: new Set([...cg,...t1]),
     dur, br, sz, fmt: fmt||'(vacío)', cls: clsOf(fmt),
     plays: +g('playCount')||0, played: asDate(g('played')), starred: !!g('starred'),
     rating: +g('userRating')||0, created: asDate(g('created')),
@@ -381,9 +437,8 @@ for(const a of AL.values()){
 }
 for(const o of R) o.alabel = o.akey ? AL.get(o.akey).label : '';
 
-const GN = new Map();
-for(const o of R){ if(!o.genre) continue; let m=GN.get(o.genN); if(!m){ m=new Map(); GN.set(o.genN,m); } m.set(o.genre,(m.get(o.genre)||0)+1); }
-const GNAME = new Map(); for(const [k,m] of GN) GNAME.set(k, topN(m,1)[0][0]);
+const T1NAMES = new Set(TIER1), T2NAMES = new Set([...T2.values()].map(v=>v.name));
+const tierOf = l => T1NAMES.has(l) ? 1 : T2NAMES.has(l) ? 2 : 0;
 
 const PAL = ['#e8a33d','#4fb3a9','#9a86e0','#d9647a','#5fa8e8','#9fc062','#d98a5f','#c07fb5','#7fc4d6','#bfae6a'];
 const CLSCOL = {'Lossless':'#4fb3a9','Con pérdida':'#d9647a','Otro':'#8a8494'};
@@ -395,8 +450,7 @@ const perOf = y => y<=1969 ? PERIODS[0].n : y<=1989 ? PERIODS[1].n : y<=2009 ? P
 
 /* ---------- estado y filtros ---------- */
 const S = {yMin:null,yMax:null,bMin:null,bMax:null,artists:new Set(),albums:new Set(),genres:new Set(),fmts:new Set(),comp:'all',play:'all',norm:false,metric:'songs'};
-const gkey = o => S.norm ? o.genN : o.genre;
-const glabel = k => S.norm ? (GNAME.get(k)||k) : k;
+const glabel = k => k;
 let F = R;
 
 function filtered(){ return !!(S.yMin!=null||S.yMax!=null||S.bMin!=null||S.bMax!=null||S.artists.size||S.albums.size||S.genres.size||S.fmts.size||S.comp!=='all'||S.play!=='all'); }
@@ -407,12 +461,13 @@ function passes(o){
   if(S.bMax!=null && o.br>S.bMax) return false;
   if(S.artists.size && !S.artists.has(o.artist)) return false;
   if(S.albums.size && !S.albums.has(o.alabel)) return false;
-  if(S.genres.size && !S.genres.has(gkey(o))) return false;
+  if(S.genres.size){ let ok=false; for(const g of S.genres){ if(o.gset.has(g)){ ok=true; break; } } if(!ok) return false; }
   if(S.fmts.size && !S.fmts.has(o.fmt)) return false;
   if(S.comp==='complete' && !o.complete) return false;
   if(S.comp==='incomplete' && o.complete) return false;
   if(S.comp==='nogenre' && o.genre) return false;
   if(S.comp==='noyear' && o.yr!=null) return false;
+  if(S.comp==='notier1' && o.prim) return false;
   if(S.play==='never' && o.plays>0) return false;
   if(S.play==='played' && o.plays===0) return false;
   return true;
@@ -446,14 +501,20 @@ function show(id,traces,extra,click){
 }
 function hbar(id,entries,o){
   o=o||{};
-  const el=$(id), n=entries.length;
-  el.style.height=Math.max(150,n*26+36)+'px';
+  const el=$(id), n=entries.length, grp=o.groups;
+  el.style.height=Math.max(150,n*26+36+(grp?26:0))+'px';
   const idx=entries.map((_,i)=>i), mx=Math.max(1,...entries.map(e=>e[1]));
-  show(id,[{type:'bar',orientation:'h',y:idx,x:entries.map(e=>e[1]),
+  const trace=(keep,name,color)=>({type:'bar',orientation:'h',name,y:idx,
+    x:entries.map((e,i)=>keep(i)?e[1]:null),
     customdata:entries.map(e=>e.length>2?e[2]:e[0]),hovertext:entries.map(e=>String(e[0])),
-    text:entries.map(e=>o.fmt?o.fmt(e[1]):fi(e[1])),textposition:'outside',cliponaxis:false,
-    marker:{color:o.color||PAL[0]},hovertemplate:'%{hovertext}<br>%{text}<extra></extra>'}],
-    {margin:{l:8,r:16,t:4,b:28},yaxis:{tickvals:idx,ticktext:entries.map(e=>trunc(String(e[0]),o.max||40)),autorange:'reversed'},xaxis:{range:[0,mx*1.2]}},
+    text:entries.map((e,i)=>keep(i)?(o.fmt?o.fmt(e[1]):fi(e[1])):''),textposition:'outside',cliponaxis:false,
+    marker:{color},hovertemplate:'%{hovertext}<br>%{text}<extra>'+(name||'')+'</extra>'});
+  const traces = grp
+    ? grp.names.map((nm,gi)=>trace(i=>grp.of[i]===gi,nm,grp.colors[gi])).filter(t=>t.x.some(v=>v!=null))
+    : [trace(()=>true,'',o.color||PAL[0])];
+  show(id,traces,
+    {barmode:'overlay',showlegend:!!grp,legend:{orientation:'h',x:0,y:1.08,font:{size:11}},
+     margin:{l:8,r:16,t:grp?30:4,b:28},yaxis:{tickvals:idx,ticktext:entries.map(e=>trunc(String(e[0]),o.max||40)),autorange:'reversed'},xaxis:{range:[0,mx*1.2]}},
     o.click ? p=>o.click(p.customdata) : null);
 }
 function vbar(id,labels,vals,o){
@@ -581,8 +642,9 @@ function buildOpts(){
   fillList('artists','dlArtists'); fillList('albums','dlAlbums');
 }
 function buildGenreOpts(){
-  const keys=[...new Set(R.map(o=>gkey(o)).filter(Boolean))];
-  OPT.genres=new Map(keys.map(k=>[glabel(k),k]).sort((a,b)=>a[0].localeCompare(b[0],'es')));
+  const labels=new Set();
+  for(const o of R) for(const l of o.gset) labels.add(l);
+  OPT.genres=new Map([...labels].sort((a,b)=>a.localeCompare(b,'es')).map(l=>[l,l]));
   fillList('genres','dlGenres');
 }
 function wirePicker(set,inId){
@@ -605,7 +667,6 @@ function initFilters(){
   });
   $('sComp').addEventListener('change',e=>{ S.comp=e.target.value; sched(); });
   $('sPlay').addEventListener('change',e=>{ S.play=e.target.value; sched(); });
-  $('cNorm').addEventListener('change',e=>{ S.norm=e.target.checked; S.genres.clear(); drawChips('genres'); buildGenreOpts(); sched(); });
   $('clear').addEventListener('click',()=>{
     Object.assign(S,{yMin:null,yMax:null,bMin:null,bMax:null,comp:'all',play:'all'});
     S.artists.clear(); S.albums.clear(); S.genres.clear(); S.fmts.clear();
@@ -635,11 +696,11 @@ function renderKpis(){
   setText('kSize',f1(bytes/1e9)+' GB');
   setText('kSizeSub',n ? f1(bytes/n/1e6)+' MB por canción en promedio' : '');
   const art=new Set(), alb=new Set();
-  let yMin=Infinity,yMax=-Infinity,wg=0,wy=0,cm=0,pl=0,tp=0,st=0;
+  let yMin=Infinity,yMax=-Infinity,wg=0,wt=0,wy=0,cm=0,pl=0,tp=0,st=0;
   for(const o of F){
     if(o.artist) art.add(o.artist); if(o.akey) alb.add(o.akey);
     if(o.yr!=null){ wy++; if(o.yr<yMin) yMin=o.yr; if(o.yr>yMax) yMax=o.yr; }
-    if(o.genre) wg++; if(o.complete) cm++; if(o.plays>0) pl++; tp+=o.plays; if(o.starred) st++;
+    if(o.genre) wg++; if(o.prim) wt++; if(o.complete) cm++; if(o.plays>0) pl++; tp+=o.plays; if(o.starred) st++;
   }
   const K=[
     ['Canciones',fi(n),'registros'+(filtered()?', de '+fi(R.length)+' en la biblioteca':' del inventario')],
@@ -647,6 +708,7 @@ function renderKpis(){
     ['Álbumes',fi(alb.size),'álbumes únicos, no filas'],
     ['Año más antiguo y más reciente',wy?yMin+' a '+yMax:'sin datos',frac(wy,n)+' tienen año'],
     ['Con género',pcs(wg,n),frac(wg,n)],
+    ['Con género tier 1',pcs(wt,n),frac(wt,n)],
     ['Metadatos completos',pcs(cm,n),frac(cm,n)+' con los 9 campos'],
     ['Reproducciones',fi(tp),pcs(pl,n)+' reproducidas al menos una vez ('+frac(pl,n)+')'],
     ['Favoritas',fi(st),'canciones con estrella']
@@ -693,14 +755,23 @@ function renderTime(){
 
 /* ---------- render: música ---------- */
 function renderMusic(){
-  const wg=F.filter(o=>o.genre), gm=countBy(wg,gkey), g15=topN(gm,15);
-  setSub('cGenreTop',frac(wg.length,F.length)+' tienen género · '+fi(gm.size)+' géneros distintos'+(S.norm?' (normalizados)':' (tal como están en los metadatos)'));
-  hbar('cGenreTop',g15.map(([k,v])=>[glabel(k),v,k]),{color:PAL[2],click:k=>addTo('genres',k)});
-  const t10=topN(gm,10), rest=wg.length-sum(t10,e=>e[1]);
-  const lab=t10.map(e=>glabel(e[0])), val=t10.map(e=>e[1]);
-  if(rest>0){ lab.push('Otros'); val.push(rest); }
-  setSub('cGenrePie','porcentaje sobre '+frac(wg.length,F.length)+' con género');
-  pie('cGenrePie',lab,val,lab.map((_,i)=>i<10?PAL[i%PAL.length]:'#5b5568'),l=>{ const e=t10.find(x=>glabel(x[0])===l); if(e) addTo('genres',e[0]); });
+  setText('musica-d','Géneros según generos.yaml: tier 1 (amplios), tier 2 (subgéneros) y etiquetas sin clasificar. Cada canción cuenta una vez por etiqueta, salvo en la torta, que usa su género principal.');
+  const wg=F.filter(o=>o.tags.length);
+  const gm=new Map();
+  for(const o of F) for(const l of o.gset) gm.set(l,(gm.get(l)||0)+1);
+  const gt=topN(gm,20);
+  setText('cGenreTop-t','20 géneros más frecuentes');
+  setSub('cGenreTop',frac(wg.length,F.length)+' tienen género · '+fi(gm.size)+' etiquetas distintas · un tier 1 incluye a sus subgéneros, por eso las barras no suman');
+  hbar('cGenreTop',gt,{groups:{names:['Tier 1','Tier 2','Sin clasificar'],colors:[PAL[2],PAL[1],'#6f687c'],of:gt.map(e=>{ const t=tierOf(e[0]); return t===1?0:t===2?1:2; })},click:l=>addTo('genres',l)});
+
+  const real=topN(countBy(F,o=>o.prim),999), t10=real.slice(0,10);
+  const rest=sum(real.slice(10),e=>e[1]), none=F.filter(o=>!o.prim).length;
+  const lab=t10.map(e=>e[0]), val=t10.map(e=>e[1]), col=t10.map((_,i)=>PAL[i%PAL.length]);
+  if(rest>0){ lab.push('Otros'); val.push(rest); col.push('#6f687c'); }
+  if(none>0){ lab.push('Sin tier 1'); val.push(none); col.push('#8a8494'); }
+  setText('cGenrePie-t','Género principal (tier 1)');
+  setSub('cGenrePie','sobre '+fi(F.length)+' canciones; cada una cuenta una vez, en su género principal según el orden de generos.yaml');
+  pie('cGenrePie',lab,val,col,l=>{ if(T1NAMES.has(l)) addTo('genres',l); });
 
   const am=countBy(F,o=>o.artist);
   setSub('cArtists',fi(am.size)+' artistas · '+frac(F.filter(o=>o.artist).length,F.length)+' con artista');
@@ -714,25 +785,26 @@ function renderMusic(){
   setSub('cArtDist',fi(am.size)+' artistas agrupados por su cantidad de canciones');
   vbar('cArtDist',B.map(b=>b[0]),bc,{colors:PAL[3],yt:'artistas',ht:'%{x} canciones: %{y} artistas'});
 
-  const gd=wg.filter(o=>o.dec!=null), gset=g15.map(e=>e[0]);
+  const gd=F.filter(o=>o.prim&&o.dec!=null), hm=topN(countBy(gd,o=>o.prim),15), gset=hm.map(e=>e[0]);
   const dset=[...new Set(gd.map(o=>o.dec))].sort((a,b)=>a-b);
   const cell=new Map();
-  for(const o of gd){ const k=gkey(o)+'\u0001'+o.dec; cell.set(k,(cell.get(k)||0)+1); }
+  for(const o of gd){ const k=o.prim+'\u0001'+o.dec; cell.set(k,(cell.get(k)||0)+1); }
   const z=gset.map(g=>dset.map(d=>cell.get(g+'\u0001'+d)||null));
   $('cHeat').style.height=Math.max(200,gset.length*26+80)+'px';
-  setSub('cHeat',frac(gd.length,F.length)+' tienen género y año · los 15 géneros más frecuentes');
-  show('cHeat',gset.length&&dset.length?[{type:'heatmap',z,x:dset.map(d=>d+'s'),y:gset.map(glabel),xgap:2,ygap:2,
+  setText('cHeat-t','Género principal por década');
+  setSub('cHeat',frac(gd.length,F.length)+' tienen género tier 1 y año · los 15 más frecuentes');
+  show('cHeat',gset.length&&dset.length?[{type:'heatmap',z,x:dset.map(d=>d+'s'),y:gset,xgap:2,ygap:2,
     colorscale:[[0,'#2f2839'],[.5,'#9a6a3a'],[1,'#e8a33d']],colorbar:{thickness:10,len:.9},
     hovertemplate:'%{y} en %{x}: %{z} canciones<extra></extra>'}]:[],
     {yaxis:{type:'category',autorange:'reversed'},xaxis:{type:'category'},margin:{l:8,r:8,t:6,b:30}});
 
   const vm=new Map();
-  for(const o of wg){ let m=vm.get(o.genN); if(!m){ m=new Map(); vm.set(o.genN,m); } m.set(o.genre,(m.get(o.genre)||0)+1); }
-  const vr=[...vm.entries()].filter(e=>e[1].size>1).map(([k,m])=>({
-    g:GNAME.get(k), nv:m.size, n:sum([...m.values()],x=>x),
-    v:[...m.entries()].sort((a,b)=>b[1]-a[1]).map(([name,c])=>name+' ('+fi(c)+')').join('; ')}));
-  setSub('tVar',fi(vr.length)+' géneros se escriben de más de una forma. Es solo una vista de estudio: los datos originales no se tocan.');
-  table('tVar',[{k:'g',h:'Género normalizado'},{k:'nv',h:'Formas',num:true},{k:'v',h:'Variantes encontradas (canciones)'},{k:'n',h:'Canciones',num:true,f:r=>fi(r.n)}],vr,{sort:['n',-1],size:8});
+  for(const o of F) for(const t of o.tags){ const nm=resolve(t).name; let m=vm.get(nm); if(!m){ m=new Map(); vm.set(nm,m); } m.set(t,(m.get(t)||0)+1); }
+  const vr=[...vm.entries()].filter(e=>e[1].size>1).map(([name,m])=>({
+    g:name, nv:m.size, n:sum([...m.values()],x=>x),
+    v:[...m.entries()].sort((a,b)=>b[1]-a[1]).map(([nm,c])=>nm+' ('+fi(c)+')').join('; ')}));
+  setSub('tVar',fi(vr.length)+' géneros se escriben de más de una forma (alias de generos.yaml o mayúsculas). Es solo una vista de estudio: los datos originales no se tocan.');
+  table('tVar',[{k:'g',h:'Género'},{k:'nv',h:'Formas',num:true},{k:'v',h:'Variantes encontradas (canciones)'},{k:'n',h:'Canciones',num:true,f:r=>fi(r.n)}],vr,{sort:['n',-1],size:8});
 }
 
 /* ---------- render: reproducciones ---------- */
@@ -746,9 +818,9 @@ function renderPlays(){
   setSub('cTopArtists','suma de reproducciones de sus canciones');
   hbar('cTopArtists',topN(pa,15),{color:PAL[1],click:a=>addTo('artists',a)});
 
-  const pg=new Map(); for(const o of played){ const k=gkey(o); if(k) pg.set(k,(pg.get(k)||0)+o.plays); }
-  setSub('cPlayGenre','reproducciones de canciones con género');
-  hbar('cPlayGenre',topN(pg,12).map(([k,v])=>[glabel(k),v,k]),{color:PAL[2],click:k=>addTo('genres',k)});
+  const pg=new Map(); for(const o of played){ if(o.prim) pg.set(o.prim,(pg.get(o.prim)||0)+o.plays); }
+  setSub('cPlayGenre','reproducciones por género principal (tier 1)');
+  hbar('cPlayGenre',topN(pg,12),{color:PAL[2],click:k=>addTo('genres',k)});
 
   const B=[['0',0,0],['1',1,1],['2 a 5',2,5],['6 a 10',6,10],['11 a 25',11,25],['más de 25',26,1e9]];
   setSub('cPlayDist','sobre '+fi(F.length)+' canciones');

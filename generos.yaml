@@ -1,0 +1,292 @@
+# generos.yaml
+# Fuente única de géneros: la leen el editor de tags (Flask) y el generador del dashboard.
+#
+# tier1: géneros amplios. El ORDEN es la prioridad: si una canción tiene varios,
+#        el primero de esta lista es su "género principal" (el que usa la torta).
+# tier2: para cada tier 1, sus subgéneros (igual que en Bandcamp). Un mismo subgénero
+#        puede aparecer bajo varios tier 1.
+# alias: otras formas de escribir lo mismo -> nombre canónico (de tier1 o tier2).
+#
+# En los archivos se guarda así: "rock; progressive rock" (tier 1; tier 2).
+# Si una canción solo trae un tier 2, el tier 1 se deduce: de forma directa si el
+# subgénero tiene un solo padre; si tiene varios, solo cuando no hay ningún tier 1 claro.
+# Mayúsculas, guiones y barras no importan al comparar ("Prog-Rock" == "prog rock").
+#
+# Después de editar: reiniciar el editor y volver a generar el dashboard.
+
+tier1:
+  - rock
+  - metal
+  - punk
+  - alternative
+  - jazz
+  - blues
+  - folk
+  - country
+  - funk
+  - soul
+  - reggae
+  - hip-hop
+  - rap
+  - electronic
+  - ambient
+  - experimental
+  - world
+  - classical
+  - soundtrack
+  - acoustic
+  - devotional
+  - kids
+  - spoken word
+  - comedy
+  - podcasts
+  - audiobooks
+  - pop
+
+tier2:
+  rock:
+    - progressive rock          # en Bandcamp es "prog rock" (queda como alias)
+    - post-rock
+    - "rock & roll"
+    - psychedelic rock
+    - hard rock
+    - garage rock
+    - surf rock
+    - math rock
+    - rockabilly
+    # extras (no están en Bandcamp)
+    - art rock
+    - pop rock
+    - neo progressive rock
+    - symphonic prog
+    - guitar virtuoso
+    - folk rock
+
+  electronic:
+    - house
+    - electronica
+    - downtempo
+    - techno
+    - electro
+    - dubstep
+    - beats
+    - dance
+    - idm
+    - "drum & bass"
+    - breaks
+    - trance
+    - glitch
+    - chiptune
+    - chillwave
+    - dub
+    - edm
+    - witch house
+    - garage
+    - juke
+    - footwork
+    - vaporwave
+    - synthwave
+
+  metal:
+    - hardcore
+    - black metal
+    - death metal
+    - thrash metal
+    - grindcore
+    - doom
+    - post hardcore
+    - progressive metal
+    - metalcore
+    - sludge metal
+    - heavy metal
+    - deathcore
+    - noise
+    # extra (no está en Bandcamp)
+    - nu metal
+    - alternative metal
+    - power metal
+
+  alternative:
+    - indie rock
+    - industrial
+    - shoegaze
+    - grunge
+    - goth
+    - dream pop
+    - emo
+    - math rock
+    - britpop
+    - jangle pop
+
+  punk:
+    - hardcore punk
+    - garage
+    - pop punk
+    - punk rock
+    - post-punk
+    - post hardcore
+    - thrash
+    - crust punk
+    - folk punk
+    - emo
+    - ska
+    - no wave
+
+  pop:
+    - indie pop
+    - synth pop
+    - power pop
+    - new wave
+    - dream pop
+    - noise pop
+    - experimental pop
+    - electro pop
+    - adult contemporary
+    - jangle pop
+    - j-pop
+
+  ambient:
+    # "electronic" también figura en Bandcamp, pero ya es un tier 1
+    - chill-out
+    - drone
+    - dark ambient
+    - soundscapes
+    - field recordings
+    - atmospheric
+    - meditation
+    - noise
+    - new age
+    - idm
+    - industrial
+    - trip hop
+
+  soundtrack:
+    - film music
+    - video game music
+    - video game
+    - ost
+
+  world:
+    - roots
+    - african
+    - tropical
+    - tribal
+    - brazilian
+    - celtic
+    - world fusion
+    - cumbia
+    - gypsy
+    - new age
+    - balkan
+    - reggaeton
+    - latin rock
+    - tango
+    - latin
+    - bossa nova
+
+  jazz:
+    - fusion
+    - big band
+    - nu jazz
+    - modern jazz
+    - swing
+    - free jazz
+    - soul jazz
+    - latin jazz
+    - vocal jazz
+    - bebop
+    - spiritual jazz
+    - hard bop
+    - cool jazz
+
+  acoustic:
+    # "folk", "rock" y "pop" también figuran en Bandcamp, pero ya son tier 1
+    - singer-songwriter
+    - guitar
+    - americana
+    - electro-acoustic
+    - piano
+    - bluegrass
+    - roots
+
+  funk:
+    - funk jam
+    - deep funk
+    - funk rock
+    - jazz funk
+    - boogie
+    - g-funk
+    - rare groove
+    - electro
+    - go-go
+    - disco
+
+  classical:
+    - orchestral
+    - neo-classical
+    - chamber music
+    - classical piano
+    - contemporary classical
+    - baroque
+    - opera
+    - choral
+    - modern classical
+    - avant garde
+
+  blues:
+    - "rhythm & blues"
+    - blues rock
+    - country blues
+    - boogie-woogie
+    - delta blues
+    - americana
+    - electric blues
+    - gospel
+    - bluegrass
+
+  country:
+    - bluegrass
+    - country rock
+    - americana
+    - country folk
+    - alt-country
+    - country blues
+    - western
+    - singer-songwriter
+    - outlaw
+    - honky-tonk
+    - roots
+    - hillbilly
+
+alias:
+  prog rock: progressive rock
+  prog: progressive rock
+  progressive: progressive rock
+  prog metal: progressive metal
+  neo prog: neo progressive rock
+  rock nacional: latin rock
+  alternative rock: alternative
+  alt rock: alternative
+  "rock and roll": "rock & roll"
+  "rock n roll": "rock & roll"
+  "r&b": "rhythm & blues"
+  rnb: "rhythm & blues"
+  synthpop: synth pop
+  classical music: classical
+  world music: world
+  latin music: latin
+  children: kids
+  childrens music: kids
+  score: soundtrack
+  jazz fusion: fusion
+  drum and bass: drum & bass
+  alternative country: alt-country
+  gothic rock: goth
+  chillout: chill-out
+  field recording: field recordings
+  electroacoustic: electro-acoustic
+  electropop: electro pop
+  Pop Rock: pop rock
+  Pop/Rock: pop rock
+  Alternative Rock: alternative
+  

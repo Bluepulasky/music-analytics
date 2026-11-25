@@ -689,41 +689,15 @@ LASTFM_HEADERS = {"User-Agent": "navidrome-style-tagger/0.1 (uso personal)"}
 LASTFM_CACHE_DAYS = 30
 
 # Estilos autorizados. Editá libremente (después reiniciá Flask).
-AUTORIZADOS = [
-    # tu lista
-    "alternative rock", "progressive rock", "indie rock", "latin", "progressive metal",
-    "punk rock", "classic rock", "classical", "children", "pop rock",
-    # prog y afines
-    "symphonic prog", "symphonic rock", "art rock", "neo-prog", "canterbury scene",
-    "krautrock", "space rock", "post-rock", "math rock", "jazz fusion", "jazz rock",
-    "guitar virtuoso",
-    # rock
-    "hard rock", "psychedelic rock", "folk rock", "blues rock", "southern rock",
-    "glam rock", "garage rock", "post-punk", "new wave", "shoegaze", "grunge",
-    "britpop", "power pop", "pop rock", "rock nacional",
-    # metal
-    "heavy metal", "thrash metal", "death metal", "black metal", "doom metal",
-    "power metal", "folk metal", "gothic metal",
-    # fuera del rock
-    "jazz", "blues", "folk", "country", "singer-songwriter", "soul", "funk",
-    "reggae", "ska", "hip-hop", "electronic", "ambient", "new age", "synthpop",
-    "soundtrack", "tango", "bossa nova",
-]
+def load_generos():
+    with open(BASE_DIR / "generos.yaml", "r", encoding="utf-8") as f:
+        g = yaml.safe_load(f) or {}
+    tier1 = [str(x) for x in g.get("tier1", [])]
+    tier2 = [str(c) for hijos in (g.get("tier2") or {}).values() for c in (hijos or [])]
+    alias = {str(k): str(v) for k, v in (g.get("alias") or {}).items()}
+    return list(dict.fromkeys(tier1 + tier2)), alias
 
-# Variantes de escritura que se suman al estilo canónico.
-ALIAS = {
-    "prog rock": "progressive rock",
-    "prog": "progressive rock",
-    "progressive": "progressive rock",
-    "prog metal": "progressive metal",
-    "alt rock": "alternative rock",
-    "classical music": "classical",
-    "kids": "children",
-    "childrens music": "children",
-    "latin music": "latin",
-    "neo prog": "neo-prog",
-}
-
+AUTORIZADOS, ALIAS = load_generos()
 
 def norm_tag(tag):
     return re.sub(r"[\s\-_/]+", " ", tag.lower()).strip()

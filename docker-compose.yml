@@ -10,4 +10,5 @@ services:
       - ./data:/app/data
       - ./config.local.yaml:/app/config.local.yaml:ro
       - /mnt/tank-hdd/media/Music:/mnt/tank-hdd/media/Music:rw
+      - ./generos.yaml:/app/generos.yaml:ro
     restart: unless-stopped

@@ -42,6 +42,7 @@ tier1:
   - podcasts
   - audiobooks
   - pop
+  - gospel
 
 tier2:
   rock:
@@ -52,7 +53,6 @@ tier2:
     - hard rock
     - garage rock
     - surf rock
-    - math rock
     - rockabilly
     # extras (no están en Bandcamp)
     - art rock
@@ -61,17 +61,15 @@ tier2:
     - symphonic prog
     - guitar virtuoso
     - folk rock
+    - latin rock
 
   electronic:
     - house
-    - electronica
     - downtempo
     - techno
     - electro
     - dubstep
     - beats
-    - dance
-    - idm
     - "drum & bass"
     - breaks
     - trance
@@ -79,28 +77,25 @@ tier2:
     - chiptune
     - chillwave
     - dub
-    - edm
     - witch house
-    - garage
     - juke
     - footwork
     - vaporwave
     - synthwave
+    - trip hop
+    - idm
 
   metal:
-    - hardcore
     - black metal
     - death metal
     - thrash metal
     - grindcore
     - doom
-    - post hardcore
     - progressive metal
     - metalcore
     - sludge metal
     - heavy metal
     - deathcore
-    - noise
     # extra (no está en Bandcamp)
     - nu metal
     - alternative metal
@@ -120,15 +115,12 @@ tier2:
 
   punk:
     - hardcore punk
-    - garage
     - pop punk
     - punk rock
     - post-punk
     - post hardcore
-    - thrash
     - crust punk
     - folk punk
-    - emo
     - ska
     - no wave
 
@@ -137,12 +129,10 @@ tier2:
     - synth pop
     - power pop
     - new wave
-    - dream pop
     - noise pop
     - experimental pop
     - electro pop
     - adult contemporary
-    - jangle pop
     - j-pop
 
   ambient:
@@ -152,43 +142,28 @@ tier2:
     - dark ambient
     - soundscapes
     - field recordings
-    - atmospheric
-    - meditation
-    - noise
     - new age
-    - idm
-    - industrial
-    - trip hop
 
   soundtrack:
     - film music
     - video game music
     - video game
-    - ost
 
   world:
-    - roots
     - african
-    - tropical
-    - tribal
     - brazilian
     - celtic
     - world fusion
     - cumbia
-    - gypsy
-    - new age
     - balkan
     - reggaeton
-    - latin rock
     - tango
-    - latin
     - bossa nova
 
   jazz:
     - fusion
     - big band
     - nu jazz
-    - modern jazz
     - swing
     - free jazz
     - soul jazz
@@ -203,11 +178,9 @@ tier2:
     # "folk", "rock" y "pop" también figuran en Bandcamp, pero ya son tier 1
     - singer-songwriter
     - guitar
-    - americana
     - electro-acoustic
     - piano
     - bluegrass
-    - roots
 
   funk:
     - funk jam
@@ -217,7 +190,6 @@ tier2:
     - boogie
     - g-funk
     - rare groove
-    - electro
     - go-go
     - disco
 
@@ -230,7 +202,6 @@ tier2:
     - baroque
     - opera
     - choral
-    - modern classical
     - avant garde
 
   blues:
@@ -239,10 +210,7 @@ tier2:
     - country blues
     - boogie-woogie
     - delta blues
-    - americana
     - electric blues
-    - gospel
-    - bluegrass
 
   country:
     - bluegrass
@@ -250,9 +218,7 @@ tier2:
     - americana
     - country folk
     - alt-country
-    - country blues
     - western
-    - singer-songwriter
     - outlaw
     - honky-tonk
     - roots
@@ -274,7 +240,6 @@ alias:
   synthpop: synth pop
   classical music: classical
   world music: world
-  latin music: latin
   children: kids
   childrens music: kids
   score: soundtrack
@@ -289,4 +254,3 @@ alias:
   Pop Rock: pop rock
   Pop/Rock: pop rock
   Alternative Rock: alternative
-  

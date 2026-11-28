@@ -394,16 +394,15 @@ const R = RAW.rows.map((r,i)=>{
   const gl=g('genres');
   const tags=(Array.isArray(gl)&&gl.length ? gl : String(g('genre')||'').split(/\s*[;•]\s*/)).map(clean).filter(Boolean);
   const genre=tags.join('; ');
-  const cg=[], t1=new Set(), maybe=new Set();
+  const cg=[], t1=new Set(), cand=new Set();
   for(const t of tags){
     const r=resolve(t);
     if(cg.includes(r.name)) continue;
     cg.push(r.name);
     if(r.tier===1) t1.add(r.name);
-    else if(r.tier===2){ if(r.parents.length===1) t1.add(r.parents[0]); else r.parents.forEach(p=>maybe.add(p)); }
+    else if(r.tier===2) r.parents.forEach(p=>cand.add(p));
   }
-  if(!t1.size) maybe.forEach(p=>t1.add(p));   // sin tier 1 claro: se usan los padres posibles
-  const prim=TIER1.find(x=>t1.has(x))||'';
+  const prim=TIER1.find(x=>t1.size ? t1.has(x) : cand.has(x))||'';
   const fmt=clean(g('suffix')).toLowerCase();
   const year=+g('year')||0, dur=+g('duration')||0, br=+g('bitRate')||0, sz=+g('size')||0;
   const miss=[];
@@ -414,7 +413,7 @@ const R = RAW.rows.map((r,i)=>{
     i, title, artist, album, albumArtist: clean(g('albumArtist')),
     akey: album ? (g('albumId') || artist+'\u0001'+album) : null,
     yr: year>0 ? year : null, dec: year>0 ? Math.floor(year/10)*10 : null,
-    genre, tags, cg, t1, prim, gset: new Set([...cg,...t1]),
+    genre, tags, cg, t1, prim, gset: new Set(prim ? [...cg,prim] : cg),
     dur, br, sz, fmt: fmt||'(vacío)', cls: clsOf(fmt),
     plays: +g('playCount')||0, played: asDate(g('played')), starred: !!g('starred'),
     rating: +g('userRating')||0, created: asDate(g('created')),
@@ -439,6 +438,7 @@ for(const o of R) o.alabel = o.akey ? AL.get(o.akey).label : '';
 
 const T1NAMES = new Set(TIER1), T2NAMES = new Set([...T2.values()].map(v=>v.name));
 const tierOf = l => T1NAMES.has(l) ? 1 : T2NAMES.has(l) ? 2 : 0;
+const t1Of = o => [...o.gset].filter(l=>T1NAMES.has(l));
 
 const PAL = ['#e8a33d','#4fb3a9','#9a86e0','#d9647a','#5fa8e8','#9fc062','#d98a5f','#c07fb5','#7fc4d6','#bfae6a'];
 const CLSCOL = {'Lossless':'#4fb3a9','Con pérdida':'#d9647a','Otro':'#8a8494'};
@@ -580,7 +580,7 @@ const SECTIONS = [
    ['chart','cYear','Canciones por año',2,320],['chart','cDec','Por década',1,320],
    ['chart','cPer','Grandes períodos',1,300],['html','cTop','Décadas con mayor presencia',1],['html','cNoYear','Canciones sin año',1]]},
  {id:'musica',t:'Distribución musical',d:'Géneros, artistas y álbumes. Los géneros se muestran como están escritos en los metadatos.',cards:[
-   ['chart','cGenreTop','15 géneros más frecuentes',2,440],['chart','cGenrePie','Distribución porcentual de géneros',1,440],
+   ['chart','cGenreTop','20 géneros más frecuentes',2,440],['chart','cGenrePie','Distribución porcentual de géneros',1,440],
    ['chart','cArtists','20 artistas con más canciones',1,300],['chart','cAlbums','20 álbumes con más canciones',1,300],['chart','cArtDist','Cuántos artistas tienen cuántas canciones',1,300],
    ['chart','cHeat','Géneros por década',3,400],['table','tVar','Variantes de escritura de un mismo género',3]]},
  {id:'plays',t:'Reproducciones y actividad',d:'Lo que realmente se escucha, y cómo creció la biblioteca. <span id="playsNote"></span>',cards:[
@@ -761,7 +761,7 @@ function renderMusic(){
   for(const o of F) for(const l of o.gset) gm.set(l,(gm.get(l)||0)+1);
   const gt=topN(gm,20);
   setText('cGenreTop-t','20 géneros más frecuentes');
-  setSub('cGenreTop',frac(wg.length,F.length)+' tienen género · '+fi(gm.size)+' etiquetas distintas · un tier 1 incluye a sus subgéneros, por eso las barras no suman');
+  setSub('cGenreTop',frac(wg.length,F.length)+' tienen género · '+fi(gm.size)+' etiquetas distintas');
   hbar('cGenreTop',gt,{groups:{names:['Tier 1','Tier 2','Sin clasificar'],colors:[PAL[2],PAL[1],'#6f687c'],of:gt.map(e=>{ const t=tierOf(e[0]); return t===1?0:t===2?1:2; })},click:l=>addTo('genres',l)});
 
   const real=topN(countBy(F,o=>o.prim),999), t10=real.slice(0,10);
@@ -785,14 +785,16 @@ function renderMusic(){
   setSub('cArtDist',fi(am.size)+' artistas agrupados por su cantidad de canciones');
   vbar('cArtDist',B.map(b=>b[0]),bc,{colors:PAL[3],yt:'artistas',ht:'%{x} canciones: %{y} artistas'});
 
-  const gd=F.filter(o=>o.prim&&o.dec!=null), hm=topN(countBy(gd,o=>o.prim),15), gset=hm.map(e=>e[0]);
+  const gd=F.filter(o=>o.prim&&o.dec!=null);
+  const hc=new Map(); for(const o of gd) for(const g of t1Of(o)) hc.set(g,(hc.get(g)||0)+1);
+  const gset=topN(hc,15).map(e=>e[0]);
   const dset=[...new Set(gd.map(o=>o.dec))].sort((a,b)=>a-b);
   const cell=new Map();
-  for(const o of gd){ const k=o.prim+'\u0001'+o.dec; cell.set(k,(cell.get(k)||0)+1); }
+  for(const o of gd) for(const g of t1Of(o)){ const k=g+'\u0001'+o.dec; cell.set(k,(cell.get(k)||0)+1); }
   const z=gset.map(g=>dset.map(d=>cell.get(g+'\u0001'+d)||null));
   $('cHeat').style.height=Math.max(200,gset.length*26+80)+'px';
-  setText('cHeat-t','Género principal por década');
-  setSub('cHeat',frac(gd.length,F.length)+' tienen género tier 1 y año · los 15 más frecuentes');
+  setText('cHeat-t','Género tier 1 por década');
+  setSub('cHeat',frac(gd.length,F.length)+' tienen género tier 1 y año · una canción suma en cada tier 1 que tenga · los 15 más frecuentes');
   show('cHeat',gset.length&&dset.length?[{type:'heatmap',z,x:dset.map(d=>d+'s'),y:gset,xgap:2,ygap:2,
     colorscale:[[0,'#2f2839'],[.5,'#9a6a3a'],[1,'#e8a33d']],colorbar:{thickness:10,len:.9},
     hovertemplate:'%{y} en %{x}: %{z} canciones<extra></extra>'}]:[],
@@ -818,8 +820,8 @@ function renderPlays(){
   setSub('cTopArtists','suma de reproducciones de sus canciones');
   hbar('cTopArtists',topN(pa,15),{color:PAL[1],click:a=>addTo('artists',a)});
 
-  const pg=new Map(); for(const o of played){ if(o.prim) pg.set(o.prim,(pg.get(o.prim)||0)+o.plays); }
-  setSub('cPlayGenre','reproducciones por género principal (tier 1)');
+  const pg=new Map(); for(const o of played){ for(const g of t1Of(o)) pg.set(g,(pg.get(g)||0)+o.plays); }
+  setSub('cPlayGenre','reproducciones por género tier 1; una canción suma en cada tier 1 que tenga');
   hbar('cPlayGenre',topN(pg,12),{color:PAL[2],click:k=>addTo('genres',k)});
 
   const B=[['0',0,0],['1',1,1],['2 a 5',2,5],['6 a 10',6,10],['11 a 25',11,25],['más de 25',26,1e9]];
